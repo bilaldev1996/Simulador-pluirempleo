@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import GlobalSummary from './components/GlobalSummary';
 import JobForm from './components/JobForm';
 import JobList from './components/JobList';
-import MonthlyTimelineChart from './components/MonthlyTimelineChart';
 import ScenarioComparison from './components/ScenarioComparison';
 import TaxBreakdown from './components/TaxBreakdown';
 import { defaultJob, simulateMultiJobScenario } from './utils/taxCalculator';
@@ -71,7 +70,6 @@ export default function App() {
         <section className="stack">
           <GlobalSummary result={result} />
           <TaxBreakdown result={result} />
-          <MonthlyTimelineChart points={result.monthlyTimeline} />
           <ScenarioComparison baseline={baseline} current={result} />
         </section>
 

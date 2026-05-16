@@ -58,7 +58,7 @@ button { cursor: pointer; }
 .summary-top, .section-title, .card-header { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
 .card-header.compact { align-items: flex-start; }
 .summary-grid, .job-grid, .compare-grid { display: grid; gap: 12px; }
-.summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.summary-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 .mini-stat, .compare-grid article {
   padding: 14px; border-radius: 18px; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
 }
@@ -66,12 +66,12 @@ button { cursor: pointer; }
 .mini-stat strong, .compare-grid strong, .job-metrics strong, .tax-bar strong { font-size: 1.05rem; }
 .eyebrow { margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--primary); font-size: 0.72rem; }
 .pill {
-  display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px;
-  padding: 8px 12px; border-radius: 18px; background: color-mix(in srgb, var(--primary) 18%, transparent);
-  color: var(--text); border: 1px solid var(--border); white-space: normal; text-align: right; max-width: 220px;
+  display: inline-flex; align-items: center; gap: 10px; justify-content: space-between;
+  padding: 10px 12px; border-radius: 999px; background: color-mix(in srgb, var(--primary) 18%, transparent);
+  color: var(--text); border: 1px solid var(--border); white-space: nowrap; text-align: left; max-width: 100%;
 }
 .pill strong { font-size: 1rem; line-height: 1.1; }
-.pill span { font-size: 0.78rem; line-height: 1.2; opacity: 0.92; }
+.pill span { font-size: 0.78rem; line-height: 1.2; opacity: 0.92; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
 .job-card { overflow: hidden; }
 .job-card h3 { overflow-wrap: anywhere; }
 .job-metrics > div { min-width: 0; }
@@ -90,9 +90,7 @@ label { display: grid; gap: 8px; color: var(--muted); font-size: 0.95rem; }
 .job-card h3, .section-title h2, .summary-top h2 { margin: 0; }
 .inline-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .slider-label { display: grid; gap: 6px; min-width: 220px; }
-.tax-bars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
-.timeline-chart { display: grid; grid-template-columns: repeat(12, minmax(72px, 1fr)); gap: 10px; align-items: end; min-height: 240px; overflow-x: auto; padding-bottom: 6px; }
-.timeline-bar { display: grid; gap: 8px; justify-items: center; min-width: 72px; }
+.tax-bars { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 18px; }
 .timeline-bar.overlap small,
 .timeline-bar.overlap strong { color: var(--primary); }
 .timeline-bar strong, .timeline-bar small { text-align: center; line-height: 1.1; }
@@ -115,5 +113,10 @@ label { display: grid; gap: 8px; color: var(--muted); font-size: 0.95rem; }
   .app-shell { padding: 14px; }
   .hero, .card { padding: 18px; border-radius: 20px; }
   .summary-grid, .tax-bars, .form-grid, .job-metrics { grid-template-columns: 1fr; }
-  .timeline-chart { grid-template-columns: repeat(12, minmax(64px, 1fr)); }
+  .hero-actions { width: 100%; }
+  .hero-actions > button { flex: 1 1 100%; }
+  .card-header, .summary-top, .section-title { flex-direction: column; align-items: flex-start; }
+  .pill { width: 100%; justify-content: space-between; }
+  .job-grid { grid-template-columns: 1fr; }
+  .job-metrics { grid-template-columns: 1fr; }
 }
