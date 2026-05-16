@@ -70,7 +70,7 @@ export default function JobForm({ job, onChange, onRemove, canRemove }: Props) {
             type="number"
             min="0"
             max="60"
-            step="0.5"
+            step="0.01"
             value={job.irpfRate}
             onChange={handleNumber('irpfRate')}
             disabled={job.withholdingMode === 'auto'}

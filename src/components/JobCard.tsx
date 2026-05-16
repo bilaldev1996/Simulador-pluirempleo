@@ -13,7 +13,8 @@ export default function JobCard({ job }: Props) {
           <h3>{job.company}</h3>
         </div>
         <span className="pill">
-          {job.withholdingMode === 'auto' ? 'Retención estimada automáticamente' : 'Retención definida por usuario'} · {formatRate(job.withholdingRate)}%
+          <span>{job.withholdingMode === 'auto' ? 'Retención estimada automáticamente' : 'Retención definida por usuario'}</span>
+          <strong>{formatRate(job.withholdingRate)}%</strong>
         </span>
       </div>
 
@@ -35,5 +36,5 @@ function money(value: number): string {
 }
 
 function formatRate(value: number): string {
-  return Number.isInteger(value) ? `${value}` : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);
 }
