@@ -29,12 +29,11 @@ export default function JobForm({ job, onChange, onRemove, canRemove }: Props) {
 
       <div className="form-grid">
         <label>
-          Retención automática AEAT simplificada
-          <input
-            type="checkbox"
-            checked={job.withholdingMode === 'auto'}
-            onChange={(e) => setField('withholdingMode', e.target.checked ? 'auto' : 'manual')}
-          />
+          Modo de retención
+          <select value={job.withholdingMode} onChange={(e) => setField('withholdingMode', e.target.value as JobInput['withholdingMode'])}>
+            <option value="auto">AUTO</option>
+            <option value="manual">MANUAL</option>
+          </select>
         </label>
 
         <label>
@@ -93,7 +92,7 @@ export default function JobForm({ job, onChange, onRemove, canRemove }: Props) {
           <input type="number" min="1" max="12" step="1" value={job.endMonth} onChange={handleNumber('endMonth')} />
         </label>
       </div>
-      <p className="muted">{job.withholdingMode === 'auto' ? 'Retención estimada automáticamente.' : 'Retención manual aplicada.'}</p>
+      <p className="muted">{job.withholdingMode === 'auto' ? 'Retención estimada automáticamente' : 'Retención definida por usuario'}</p>
     </section>
   );
 }
