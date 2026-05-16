@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/types.ts","./src/components/globalsummary.tsx","./src/components/jobcard.tsx","./src/components/jobform.tsx","./src/components/joblist.tsx","./src/components/monthlytimelinechart.tsx","./src/components/scenariocomparison.tsx","./src/components/taxbreakdown.tsx","./src/utils/taxcalculator.ts"],"version":"5.9.3"}
