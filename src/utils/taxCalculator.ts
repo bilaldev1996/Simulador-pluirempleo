@@ -117,42 +117,26 @@ function getMonthlyGrossInMonth(job: JobInput, monthIndex: number): number {
 
 function estimateAutomaticWithholdingRate(job: JobInput, annualGross: number): number {
   const ss = calculateSSBreakdown(annualGross, job.contractType).total;
-  const taxableProxy = Math.max(annualGross - ss - PERSONAL_MINIMUM, 0);
-  const monthlyEquivalent = annualGross / Math.max(getActiveMonths(job), 1);
-  const annualizedMonthly = monthlyEquivalent * 12;
-  const baseIncome = Math.max(taxableProxy, annualizedMonthly - PERSONAL_MINIMUM);
+  const annualizedIncome = Math.max(annualGross - ss - PERSONAL_MINIMUM, 0);
+  const activeMonths = Math.max(getActiveMonths(job), 1);
+  const monthlyStability = clamp(activeMonths / 12, 0.5, 1);
+  const contractUplift = job.contractType === 'temporal' ? 0.012 : job.contractType === 'fijo-discontinuo' ? 0.008 : 0;
 
-  if (baseIncome <= 12000) return 0.035;
-  if (baseIncome <= 18000) return lerp(0.055, 0.085, (baseIncome - 12000) / 6000);
-  if (baseIncome <= 22000) return lerp(0.085, 0.12, (baseIncome - 18000) / 4000);
-  if (baseIncome <= 30000) return lerp(0.12, 0.17, (baseIncome - 22000) / 8000);
-  if (baseIncome <= 40000) return lerp(0.15, 0.2, (baseIncome - 30000) / 10000);
-  return clamp(0.2 + (baseIncome - 40000) / 120000, 0.2, 0.32);
+  let baseRate = 0.03;
+  if (annualizedIncome <= 12000) baseRate = 0.035;
+  else if (annualizedIncome <= 18000) baseRate = lerp(0.055, 0.085, (annualizedIncome - 12000) / 6000);
+  else if (annualizedIncome <= 22000) baseRate = lerp(0.085, 0.12, (annualizedIncome - 18000) / 4000);
+  else if (annualizedIncome <= 30000) baseRate = lerp(0.12, 0.17, (annualizedIncome - 22000) / 8000);
+  else if (annualizedIncome <= 40000) baseRate = lerp(0.15, 0.2, (annualizedIncome - 30000) / 10000);
+  else baseRate = clamp(0.2 + (annualizedIncome - 40000) / 120000, 0.2, 0.32);
+
+  return clamp(baseRate + contractUplift * monthlyStability, 0.03, 0.35);
 }
 
 function estimateWithholdingRate(job: JobInput, annualGross: number): number {
-  if (job.withholdingMode === 'manual') return clamp((job.irpfRate || 0) / 100, 0.03, 0.55);
+  if (job.withholdingMode === 'manual') return clamp((job.irpfRate || 0) / 100, 0, 0.55);
   const rate = estimateAutomaticWithholdingRate(job, annualGross);
   return clamp(rate, 0.03, 0.55);
-}
-
-function calculateJobRetainedTax(job: JobInput): {
-  ss: SSBreakdown;
-  annualGross: number;
-  withholdingRate: number;
-  irpfWithheldAnnual: number;
-} {
-  const annualGross = getAnnualGross(job);
-  const ss = calculateSSBreakdown(annualGross, job.contractType);
-  const withholdingRate = estimateWithholdingRate(job, annualGross);
-  const irpfWithheldAnnual = round2(Math.max(annualGross - ss.total, 0) * withholdingRate);
-
-  return {
-    ss,
-    annualGross,
-    withholdingRate: round2(withholdingRate * 100),
-    irpfWithheldAnnual,
-  };
 }
 
 export function calculateMonthlyOverlap(jobs: JobInput[], jobsResult?: JobResultLike[]): MonthPoint[] {
@@ -165,12 +149,12 @@ export function calculateMonthlyOverlap(jobs: JobInput[], jobsResult?: JobResult
       activeJobs.reduce((sum, job) => {
         const jobResult = jobsResult?.find((item) => item.job.id === job.id);
         if (jobResult) {
-          return sum + jobResult.irpfWithheldAnnual / Math.max(jobResult.activeMonths, 1);
+          const monthlyGross = getMonthlyGrossInMonth(job, index);
+          return sum + monthlyGross * (jobResult.irpfWithheldAnnual / Math.max(getAnnualGross(job), 1));
         }
         const annualGross = getAnnualGross(job);
         const withholdingRate = estimateWithholdingRate(job, annualGross);
-        const monthlyBase = Math.max(getMonthlyGrossInMonth(job, index) - calculateSS(getMonthlyGrossInMonth(job, index), job.contractType), 0);
-        return sum + monthlyBase * withholdingRate;
+        return sum + getMonthlyGrossInMonth(job, index) * withholdingRate;
       }, 0),
     );
 
@@ -195,7 +179,7 @@ export function simulateMultiJobScenario(jobs: JobInput[]): ScenarioResult {
     const annualGross = getAnnualGross(job);
     const ss = calculateSSBreakdown(annualGross, job.contractType);
     const withholdingRate = estimateWithholdingRate(job, annualGross);
-    const irpfWithheldAnnual = round2(Math.max(annualGross - ss.total, 0) * withholdingRate);
+    const irpfWithheldAnnual = round2(annualGross * withholdingRate);
     const netPaidAnnual = calculateNetSalary(annualGross, ss.total, irpfWithheldAnnual);
 
     return {

@@ -12,7 +12,9 @@ export default function JobCard({ job }: Props) {
           <p className="eyebrow">{job.contractType}</p>
           <h3>{job.company}</h3>
         </div>
-        <span className="pill">{job.withholdingMode === 'auto' ? 'Auto AEAT' : 'Manual'} · {job.withholdingRate.toFixed(1)}%</span>
+        <span className="pill">
+          {job.withholdingMode === 'auto' ? 'Retención estimada automáticamente' : 'Retención manual aplicada'} · {job.withholdingRate.toFixed(1)}%
+        </span>
       </div>
 
       <div className="job-metrics">
