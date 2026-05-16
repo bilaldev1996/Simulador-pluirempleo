@@ -74,6 +74,7 @@ export interface ScenarioResult {
   irpfWithheldAnnual: number;
   irpfAnnual: number;
   netAnnual: number;
+  netAfterSettlementAnnual: number;
   effectiveIrpfRate: number;
   surpriseTax: number;
   overlapMonths: number;

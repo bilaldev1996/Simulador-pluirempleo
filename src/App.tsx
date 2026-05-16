@@ -6,14 +6,12 @@ import MonthlyTimelineChart from './components/MonthlyTimelineChart';
 import ScenarioComparison from './components/ScenarioComparison';
 import TaxBreakdown from './components/TaxBreakdown';
 import { defaultJob, simulateMultiJobScenario } from './utils/taxCalculator';
-import { JobInput, TaxMode } from './types';
+import { JobInput } from './types';
 
 const STORAGE_KEY = 'pluriempleo-irpf-scenarios';
 
 export default function App() {
   const [jobs, setJobs] = useState<JobInput[]>(() => [defaultJob('job-1')]);
-  const [mode, setMode] = useState<TaxMode>('realista');
-  const [irpfBias, setIrpfBias] = useState(0);
   const [saved, setSaved] = useState<string[]>([]);
   const [darkMode, setDarkMode] = useState(true);
 
@@ -30,13 +28,11 @@ export default function App() {
     document.documentElement.dataset.theme = darkMode ? 'dark' : 'light';
   }, [darkMode]);
 
-  const adjustedJobs = useMemo(() => jobs.map((job) => ({ ...job, irpfRate: job.irpfRate + irpfBias })), [jobs, irpfBias]);
-
-  const result = useMemo(() => simulateMultiJobScenario(adjustedJobs, mode), [adjustedJobs, mode]);
-  const baseline = useMemo(() => simulateMultiJobScenario([adjustedJobs[0]], mode), [adjustedJobs, mode]);
+  const result = useMemo(() => simulateMultiJobScenario(jobs), [jobs]);
+  const baseline = useMemo(() => simulateMultiJobScenario([jobs[0]]), [jobs]);
 
   const exportScenario = () => {
-    const blob = new Blob([JSON.stringify({ jobs: adjustedJobs, mode, irpfBias, result }, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify({ jobs, result }, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -74,7 +70,7 @@ export default function App() {
       <main className="layout">
         <section className="stack">
           <GlobalSummary result={result} />
-          <TaxBreakdown result={result} mode={mode} onModeChange={(value) => setMode(value as TaxMode)} irpfBias={irpfBias} onBiasChange={setIrpfBias} />
+          <TaxBreakdown result={result} />
           <MonthlyTimelineChart points={result.monthlyTimeline} />
           <ScenarioComparison baseline={baseline} current={result} />
         </section>

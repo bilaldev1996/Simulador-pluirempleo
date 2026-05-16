@@ -6,7 +6,7 @@ type Props = {
 };
 
 export default function ScenarioComparison({ baseline, current }: Props) {
-  const delta = current.netAnnual - baseline.netAnnual;
+  const delta = current.netAfterSettlementAnnual - baseline.netAfterSettlementAnnual;
 
   return (
     <section className="card">
@@ -18,12 +18,12 @@ export default function ScenarioComparison({ baseline, current }: Props) {
       </div>
       <div className="compare-grid">
         <article>
-          <span>Base</span>
-          <strong>{money(baseline.netAnnual)}</strong>
+          <span>Base tras renta</span>
+          <strong>{money(baseline.netAfterSettlementAnnual)}</strong>
         </article>
         <article>
-          <span>Actual</span>
-          <strong>{money(current.netAnnual)}</strong>
+          <span>Actual tras renta</span>
+          <strong>{money(current.netAfterSettlementAnnual)}</strong>
         </article>
         <article>
           <span>Diferencia</span>

@@ -8,9 +8,11 @@ export default function GlobalSummary({ result }: Props) {
   const cards = [
     { label: 'Bruto anual', value: formatMoney(result.grossAnnual) },
     { label: 'SS anual', value: formatMoney(result.ssAnnual) },
-    { label: 'IRPF teórico', value: formatMoney(result.irpfTheoreticalAnnual) },
+    { label: 'Base IRPF', value: formatMoney(result.taxableBaseAnnual) },
+    { label: 'IRPF real', value: formatMoney(result.irpfTheoreticalAnnual) },
     { label: 'IRPF retenido', value: formatMoney(result.irpfWithheldAnnual) },
     { label: 'Neto anual', value: formatMoney(result.netAnnual) },
+    { label: 'Neto tras renta', value: formatMoney(result.netAfterSettlementAnnual) },
     { label: 'IRPF efectivo', value: `${result.effectiveIrpfRate.toFixed(1)}%` },
     { label: 'Sorpresa fiscal', value: formatMoney(result.surpriseTax) },
   ];
