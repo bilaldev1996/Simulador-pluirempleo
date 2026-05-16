@@ -8,6 +8,7 @@ Frontend React + TypeScript para simular pluriempleo, retenciones y netos estima
 - SS por empresa antes de IRPF
 - Base liquidable con mínimo personal aplicado una sola vez
 - Retenciones independientes por empresa
+- Modo de retención automática AEAT simplificada o manual
 - Regularización estimada en renta
 
 ## Ejecutar

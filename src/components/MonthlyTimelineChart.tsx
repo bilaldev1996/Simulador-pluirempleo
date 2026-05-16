@@ -18,12 +18,13 @@ export default function MonthlyTimelineChart({ points }: Props) {
 
       <div className="timeline-chart">
         {points.map((point) => (
-          <div className="timeline-bar" key={point.month}>
+          <div className={`timeline-bar${point.activeJobs > 1 ? ' overlap' : ''}`} key={point.month}>
             <div className="bars">
               <span className="bar gross" style={{ height: `${(point.gross / max) * 100}%` }} title={`Bruto ${point.month}`} />
               <span className="bar net" style={{ height: `${(point.net / max) * 100}%` }} title={`Neto ${point.month}`} />
             </div>
             <small>{point.month}</small>
+            <strong>{point.activeJobs} empresas</strong>
           </div>
         ))}
       </div>

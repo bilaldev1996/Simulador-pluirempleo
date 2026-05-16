@@ -1,5 +1,5 @@
 export type ContractType = 'indefinido' | 'temporal' | 'fijo-discontinuo';
-export type TaxMode = 'conservador' | 'realista' | 'optimista';
+export type WithholdingMode = 'auto' | 'manual';
 
 export interface SSBreakdown {
   contingenciasComunes: number;
@@ -27,6 +27,7 @@ export interface JobInput {
   monthlyGross: number;
   payPeriods: number;
   irpfRate: number;
+  withholdingMode: WithholdingMode;
   startMonth: number;
   endMonth: number;
   customPayPeriods?: number;
@@ -44,20 +45,18 @@ export interface JobResult {
   id: string;
   company: string;
   contractType: ContractType;
+  withholdingMode: WithholdingMode;
   monthlyGross: number;
   annualGross: number;
   ss: number;
   ssBreakdown: SSBreakdown;
   taxableBase: number;
-  workIncomeReduction: number;
-  personalMinimum: number;
-  liquidBase: number;
-  irpfTheoreticalAnnual: number;
   irpfWithheldAnnual: number;
   withholdingRate: number;
-  netAnnual: number;
+  netPaidAnnual: number;
   netMonthlyAverage: number;
   activeMonths: number;
+  payPeriods: number;
 }
 
 export interface ScenarioResult {
@@ -66,18 +65,16 @@ export interface ScenarioResult {
   grossAnnual: number;
   ssAnnual: number;
   ssBreakdownAnnual: SSBreakdown;
-  taxableBaseAnnual: number;
-  workIncomeReductionAnnual: number;
   personalMinimumAnnual: number;
+  baseIrpfGlobalAnnual: number;
+  workIncomeReductionAnnual: number;
   liquidBaseAnnual: number;
-  irpfTheoreticalAnnual: number;
+  irpfRealAnnual: number;
   irpfWithheldAnnual: number;
-  irpfAnnual: number;
-  netAnnual: number;
   netAfterSettlementAnnual: number;
-  effectiveIrpfRate: number;
-  surpriseTax: number;
+  netPaidAnnual: number;
+  regularizationEstimated: number;
   overlapMonths: number;
   secondPayerAnnual: number;
-  averageWithholdingRate: number;
+  companiesActiveByMonth: number[];
 }

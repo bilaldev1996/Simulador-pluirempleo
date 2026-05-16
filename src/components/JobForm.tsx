@@ -29,6 +29,15 @@ export default function JobForm({ job, onChange, onRemove, canRemove }: Props) {
 
       <div className="form-grid">
         <label>
+          Retención automática AEAT
+          <input
+            type="checkbox"
+            checked={job.withholdingMode === 'auto'}
+            onChange={(e) => setField('withholdingMode', e.target.checked ? 'auto' : 'manual')}
+          />
+        </label>
+
+        <label>
           Empresa
           <input value={job.company} onChange={(e) => setField('company', e.target.value)} placeholder="Nombre de la empresa" />
         </label>
@@ -57,8 +66,16 @@ export default function JobForm({ job, onChange, onRemove, canRemove }: Props) {
         </label>
 
         <label>
-          IRPF aplicado (%)
-          <input type="number" min="0" max="60" step="0.5" value={job.irpfRate} onChange={handleNumber('irpfRate')} />
+          Retención manual (%)
+          <input
+            type="number"
+            min="3"
+            max="60"
+            step="0.5"
+            value={job.irpfRate}
+            onChange={handleNumber('irpfRate')}
+            disabled={job.withholdingMode === 'auto'}
+          />
         </label>
 
         <label>
@@ -76,6 +93,7 @@ export default function JobForm({ job, onChange, onRemove, canRemove }: Props) {
           <input type="number" min="1" max="12" step="1" value={job.endMonth} onChange={handleNumber('endMonth')} />
         </label>
       </div>
+      <p className="muted">{job.withholdingMode === 'auto' ? 'La empresa calcula una retención simplificada según el salario anualizado.' : 'La empresa aplica la retención manual indicada por el usuario.'}</p>
     </section>
   );
 }

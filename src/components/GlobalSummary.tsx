@@ -6,15 +6,16 @@ type Props = {
 
 export default function GlobalSummary({ result }: Props) {
   const cards = [
-    { label: 'Bruto anual', value: formatMoney(result.grossAnnual) },
-    { label: 'SS anual', value: formatMoney(result.ssAnnual) },
-    { label: 'Base IRPF', value: formatMoney(result.taxableBaseAnnual) },
-    { label: 'IRPF real', value: formatMoney(result.irpfTheoreticalAnnual) },
-    { label: 'IRPF retenido', value: formatMoney(result.irpfWithheldAnnual) },
-    { label: 'Neto anual', value: formatMoney(result.netAnnual) },
-    { label: 'Neto tras renta', value: formatMoney(result.netAfterSettlementAnnual) },
-    { label: 'IRPF efectivo', value: `${result.effectiveIrpfRate.toFixed(1)}%` },
-    { label: 'Sorpresa fiscal', value: formatMoney(result.surpriseTax) },
+    { label: 'Bruto total anual', value: formatMoney(result.grossAnnual) },
+    { label: 'SS total', value: formatMoney(result.ssAnnual) },
+    { label: 'Base IRPF global', value: formatMoney(result.baseIrpfGlobalAnnual) },
+    { label: 'Mínimo personal', value: formatMoney(result.personalMinimumAnnual) },
+    { label: 'Base liquidable global', value: formatMoney(result.liquidBaseAnnual) },
+    { label: 'IRPF real', value: formatMoney(result.irpfRealAnnual) },
+    { label: 'IRPF retenido total', value: formatMoney(result.irpfWithheldAnnual) },
+    { label: 'Neto cobrado', value: formatMoney(result.netPaidAnnual) },
+    { label: 'Neto real tras declaración', value: formatMoney(result.netAfterSettlementAnnual) },
+    { label: 'Regularización estimada', value: formatMoney(result.regularizationEstimated) },
   ];
 
   return (
@@ -23,6 +24,8 @@ export default function GlobalSummary({ result }: Props) {
         <div>
           <p className="eyebrow">Resumen global</p>
           <h2>Tu foto fiscal en pluriempleo</h2>
+          <p className="muted">Las empresas calculan retenciones de forma independiente. Hacienda recalcula el IRPF sobre el total anual combinado.</p>
+          <p className="muted">La diferencia entre IRPF retenido e IRPF real puede generar pago o devolución en la declaración.</p>
         </div>
         <div className="pill">{result.jobs.length} trabajos · {result.overlapMonths} meses solapados</div>
       </div>

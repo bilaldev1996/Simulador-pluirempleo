@@ -1,4 +1,4 @@
-import { ContractType, JobInput, MonthPoint, ScenarioResult, SSBreakdown, TaxBreakdownResult, TaxMode } from '../types';
+import { ContractType, JobInput, MonthPoint, ScenarioResult, SSBreakdown, WithholdingMode } from '../types';
 
 const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 const PERSONAL_MINIMUM = 5550;
@@ -72,27 +72,30 @@ export function calculateWorkIncomeReduction(taxableAfterSS: number): number {
   return round2(Math.max(WORK_INCOME_REDUCTION_MAX - (taxableAfterSS - WORK_INCOME_REDUCTION_FLOOR) * slope, 0));
 }
 
-export function calculateTaxBase(annualGross: number, contractType: ContractType, familyMinimum = 0): TaxBreakdownResult {
-  const ss = calculateSSBreakdown(annualGross, contractType);
-  const baseIrpfGlobal = Math.max(annualGross - ss.total, 0);
-  const workIncomeReduction = calculateWorkIncomeReduction(baseIrpfGlobal);
-  const personalMinimum = PERSONAL_MINIMUM;
-  const liquidBase = Math.max(baseIrpfGlobal - workIncomeReduction - personalMinimum - familyMinimum, 0);
-  const quotaIntegra = calculateProgressiveIRPF(liquidBase);
+export function calculateGlobalTax(grossAnnual: number, ssAnnual: number): {
+  baseIrpfGlobalAnnual: number;
+  workIncomeReductionAnnual: number;
+  personalMinimumAnnual: number;
+  liquidBaseAnnual: number;
+  irpfRealAnnual: number;
+} {
+  const baseIrpfGlobalAnnual = Math.max(grossAnnual - ssAnnual, 0);
+  const workIncomeReductionAnnual = calculateWorkIncomeReduction(baseIrpfGlobalAnnual);
+  const personalMinimumAnnual = PERSONAL_MINIMUM;
+  const liquidBaseAnnual = Math.max(baseIrpfGlobalAnnual - workIncomeReductionAnnual - personalMinimumAnnual, 0);
+  const irpfRealAnnual = calculateProgressiveIRPF(liquidBaseAnnual);
 
   return {
-    ss,
-    workIncomeReduction,
-    personalMinimum,
-    familyMinimum,
-    liquidBase,
-    quotaIntegra,
-    effectiveRate: baseIrpfGlobal > 0 ? round2((quotaIntegra / baseIrpfGlobal) * 100) : 0,
+    baseIrpfGlobalAnnual,
+    workIncomeReductionAnnual,
+    personalMinimumAnnual,
+    liquidBaseAnnual,
+    irpfRealAnnual,
   };
 }
 
-export function calculateNetSalary(gross: number, ss: number, irpf: number): number {
-  return round2(gross - ss - irpf);
+export function calculateNetSalary(gross: number, ss: number, tax: number): number {
+  return round2(gross - ss - tax);
 }
 
 function getAnnualGross(job: JobInput): number {
@@ -112,118 +115,163 @@ function getMonthlyGrossInMonth(job: JobInput, monthIndex: number): number {
   return active ? job.monthlyGross : 0;
 }
 
-function estimateIndividualWithholding(job: JobInput): { rate: number; withheld: number; ss: SSBreakdown; taxableBase: number; taxDetails: TaxBreakdownResult } {
+function estimateAutomaticWithholdingRate(job: JobInput, annualGross: number): number {
+  const ss = calculateSSBreakdown(annualGross, job.contractType).total;
+  const taxableProxy = Math.max(annualGross - ss - PERSONAL_MINIMUM, 0);
+  const monthlyEquivalent = annualGross / Math.max(getActiveMonths(job), 1);
+  const annualizedMonthly = monthlyEquivalent * 12;
+  const baseIncome = Math.max(taxableProxy, annualizedMonthly - PERSONAL_MINIMUM);
+
+  if (baseIncome <= 12000) return 0.035;
+  if (baseIncome <= 18000) return lerp(0.055, 0.085, (baseIncome - 12000) / 6000);
+  if (baseIncome <= 22000) return lerp(0.085, 0.12, (baseIncome - 18000) / 4000);
+  if (baseIncome <= 30000) return lerp(0.12, 0.17, (baseIncome - 22000) / 8000);
+  if (baseIncome <= 40000) return lerp(0.15, 0.2, (baseIncome - 30000) / 10000);
+  return clamp(0.2 + (baseIncome - 40000) / 120000, 0.2, 0.32);
+}
+
+function estimateWithholdingRate(job: JobInput, annualGross: number): number {
+  if (job.withholdingMode === 'manual') return clamp((job.irpfRate || 0) / 100, 0.03, 0.55);
+  const rate = estimateAutomaticWithholdingRate(job, annualGross);
+  return clamp(rate, 0.03, 0.55);
+}
+
+function calculateJobRetainedTax(job: JobInput): {
+  ss: SSBreakdown;
+  annualGross: number;
+  withholdingRate: number;
+  irpfWithheldAnnual: number;
+} {
   const annualGross = getAnnualGross(job);
   const ss = calculateSSBreakdown(annualGross, job.contractType);
-  const taxableBase = Math.max(annualGross - ss.total, 0);
-  const workIncomeReduction = calculateWorkIncomeReduction(taxableBase);
-  const liquidBase = Math.max(taxableBase - workIncomeReduction - PERSONAL_MINIMUM, 0);
-  const taxDetails: TaxBreakdownResult = {
-    ss,
-    workIncomeReduction,
-    personalMinimum: PERSONAL_MINIMUM,
-    familyMinimum: 0,
-    liquidBase,
-    quotaIntegra: calculateProgressiveIRPF(liquidBase),
-    effectiveRate: taxableBase > 0 ? round2((calculateProgressiveIRPF(liquidBase) / taxableBase) * 100) : 0,
-  };
-
-  const theoreticalRate = annualGross > 0 ? taxDetails.quotaIntegra / annualGross : 0;
-  const withholdingRate = annualGross < 12000 ? clamp(theoreticalRate, 0, 0.55) : clamp(Math.max(theoreticalRate, 0.03), 0.03, 0.55);
-  const withheld = round2(liquidBase * withholdingRate);
+  const withholdingRate = estimateWithholdingRate(job, annualGross);
+  const irpfWithheldAnnual = round2(Math.max(annualGross - ss.total, 0) * withholdingRate);
 
   return {
-    rate: round2(withholdingRate * 100),
-    withheld,
     ss,
-    taxableBase,
-    taxDetails,
+    annualGross,
+    withholdingRate: round2(withholdingRate * 100),
+    irpfWithheldAnnual,
   };
 }
 
-export function calculateMonthlyOverlap(jobs: JobInput[]): MonthPoint[] {
+export function calculateMonthlyOverlap(jobs: JobInput[], jobsResult?: JobResultLike[]): MonthPoint[] {
   return MONTHS.map((month, index) => {
-    const gross = jobs.reduce((sum, job) => sum + getMonthlyGrossInMonth(job, index), 0);
-    const activeJobs = jobs.filter((job) => getMonthlyGrossInMonth(job, index) > 0).length;
-    return { month, gross: round2(gross), net: 0, tax: 0, activeJobs };
+    const activeJobs = jobs.filter((job) => getMonthlyGrossInMonth(job, index) > 0);
+    const gross = round2(activeJobs.reduce((sum, job) => sum + getMonthlyGrossInMonth(job, index), 0));
+    const ss = round2(activeJobs.reduce((sum, job) => sum + calculateSS(getMonthlyGrossInMonth(job, index), job.contractType), 0));
+
+    const monthlyTax = round2(
+      activeJobs.reduce((sum, job) => {
+        const jobResult = jobsResult?.find((item) => item.job.id === job.id);
+        if (jobResult) {
+          return sum + jobResult.irpfWithheldAnnual / Math.max(jobResult.activeMonths, 1);
+        }
+        const annualGross = getAnnualGross(job);
+        const withholdingRate = estimateWithholdingRate(job, annualGross);
+        const monthlyBase = Math.max(getMonthlyGrossInMonth(job, index) - calculateSS(getMonthlyGrossInMonth(job, index), job.contractType), 0);
+        return sum + monthlyBase * withholdingRate;
+      }, 0),
+    );
+
+    return {
+      month,
+      gross,
+      net: round2(gross - ss - monthlyTax),
+      tax: monthlyTax,
+      activeJobs: activeJobs.length,
+    };
   });
 }
 
-export function simulateMultiJobScenario(jobs: JobInput[], _mode: TaxMode = 'realista'): ScenarioResult {
-  const grossAnnual = round2(jobs.reduce((sum, job) => sum + getAnnualGross(job), 0));
-  const jobBreakdown = jobs.map((job) => ({ job, annualGross: getAnnualGross(job), activeMonths: getActiveMonths(job), withholding: estimateIndividualWithholding(job) }));
+type JobResultLike = {
+  job: JobInput;
+  irpfWithheldAnnual: number;
+  activeMonths: number;
+};
 
-  const jobsResult = jobBreakdown.map((entry) => {
-    const ss = entry.withholding.ss.total;
-    const netAnnual = calculateNetSalary(entry.annualGross, ss, entry.withholding.withheld);
+export function simulateMultiJobScenario(jobs: JobInput[]): ScenarioResult {
+  const jobTaxData = jobs.map((job) => {
+    const annualGross = getAnnualGross(job);
+    const ss = calculateSSBreakdown(annualGross, job.contractType);
+    const withholdingRate = estimateWithholdingRate(job, annualGross);
+    const irpfWithheldAnnual = round2(Math.max(annualGross - ss.total, 0) * withholdingRate);
+    const netPaidAnnual = calculateNetSalary(annualGross, ss.total, irpfWithheldAnnual);
 
     return {
-      id: entry.job.id,
-      company: entry.job.company,
-      contractType: entry.job.contractType,
-      monthlyGross: entry.job.monthlyGross,
-      annualGross: entry.annualGross,
+      job,
+      annualGross,
       ss,
-      ssBreakdown: entry.withholding.ss,
-      taxableBase: entry.withholding.taxableBase,
-      workIncomeReduction: entry.withholding.taxDetails.workIncomeReduction,
-      personalMinimum: entry.withholding.taxDetails.personalMinimum,
-      liquidBase: entry.withholding.taxDetails.liquidBase,
-      irpfTheoreticalAnnual: entry.withholding.taxDetails.quotaIntegra,
-      irpfWithheldAnnual: entry.withholding.withheld,
-      withholdingRate: entry.withholding.rate,
-      netAnnual,
-      netMonthlyAverage: round2(netAnnual / Math.max(entry.activeMonths, 1)),
-      activeMonths: entry.activeMonths,
+      withholdingRate,
+      irpfWithheldAnnual,
+      netPaidAnnual,
+      activeMonths: getActiveMonths(job),
+      payPeriods: job.payPeriods === 0 ? job.customPayPeriods ?? 12 : job.payPeriods,
     };
   });
 
-  const ssBreakdownAnnual = jobsResult.reduce(
-    (acc, job) => ({
-      contingenciasComunes: round2(acc.contingenciasComunes + job.ssBreakdown.contingenciasComunes),
-      desempleo: round2(acc.desempleo + job.ssBreakdown.desempleo),
-      formacionProfesional: round2(acc.formacionProfesional + job.ssBreakdown.formacionProfesional),
-      mei: round2(acc.mei + job.ssBreakdown.mei),
-      total: round2(acc.total + job.ssBreakdown.total),
-      rate: grossAnnual > 0 ? round2(((acc.total + job.ssBreakdown.total) / grossAnnual) * 100) : 0,
+  const grossAnnual = round2(jobTaxData.reduce((sum, item) => sum + item.annualGross, 0));
+  const ssAnnual = round2(jobTaxData.reduce((sum, item) => sum + item.ss.total, 0));
+  const ssBreakdownAnnual = jobTaxData.reduce(
+    (acc, item) => ({
+      contingenciasComunes: round2(acc.contingenciasComunes + item.ss.contingenciasComunes),
+      desempleo: round2(acc.desempleo + item.ss.desempleo),
+      formacionProfesional: round2(acc.formacionProfesional + item.ss.formacionProfesional),
+      mei: round2(acc.mei + item.ss.mei),
+      total: round2(acc.total + item.ss.total),
+      rate: grossAnnual > 0 ? round2(((acc.total + item.ss.total) / grossAnnual) * 100) : 0,
     }),
     { contingenciasComunes: 0, desempleo: 0, formacionProfesional: 0, mei: 0, total: 0, rate: 0 } as SSBreakdown,
   );
 
-  const ssAnnual = ssBreakdownAnnual.total;
-  const baseIrpfGlobal = Math.max(grossAnnual - ssAnnual, 0);
-  const workIncomeReductionAnnual = calculateWorkIncomeReduction(baseIrpfGlobal);
-  const personalMinimumAnnual = jobs.length > 0 ? PERSONAL_MINIMUM : 0;
-  const liquidBaseAnnual = Math.max(baseIrpfGlobal - workIncomeReductionAnnual - personalMinimumAnnual, 0);
-  const irpfRealAnnual = calculateProgressiveIRPF(liquidBaseAnnual);
-  const irpfWithheldAnnual = round2(jobsResult.reduce((sum, job) => sum + job.irpfWithheldAnnual, 0));
-  const netAnnual = round2(grossAnnual - ssAnnual - irpfWithheldAnnual);
-  const netAfterSettlementAnnual = round2(netAnnual - (irpfRealAnnual - irpfWithheldAnnual));
-  const surpriseTax = round2(irpfRealAnnual - irpfWithheldAnnual);
-  const effectiveIrpfRate = baseIrpfGlobal > 0 ? round2((irpfRealAnnual / baseIrpfGlobal) * 100) : 0;
-  const averageWithholdingRate = grossAnnual > 0 ? round2((irpfWithheldAnnual / grossAnnual) * 100) : 0;
+  const globalTax = calculateGlobalTax(grossAnnual, ssAnnual);
+  const irpfWithheldAnnual = round2(jobTaxData.reduce((sum, item) => sum + item.irpfWithheldAnnual, 0));
+  const regularizationEstimated = round2(globalTax.irpfRealAnnual - irpfWithheldAnnual);
+  const netPaidAnnual = round2(grossAnnual - ssAnnual - irpfWithheldAnnual);
+  const netAfterSettlementAnnual = round2(netPaidAnnual - regularizationEstimated);
+  const companiesActiveByMonth = calculateMonthlyOverlap(jobs).map((month) => month.activeJobs);
 
-  const monthlyTimeline = calculateMonthlyOverlap(jobs).map((point) => {
+  const monthlyTimeline = calculateMonthlyOverlap(jobs, jobTaxData).map((point) => {
     const activeJobs = jobs.filter((job) => {
       const monthNumber = MONTHS.indexOf(point.month) + 1;
       return monthNumber >= clamp(Math.round(job.startMonth), 1, 12) && monthNumber <= clamp(Math.round(job.endMonth), 1, 12);
     });
 
-    const gross = round2(activeJobs.reduce((sum, job) => sum + job.monthlyGross, 0));
-    const ss = round2(activeJobs.reduce((sum, job) => sum + calculateSS(job.monthlyGross, job.contractType), 0));
-    const tax = round2(activeJobs.reduce((sum, job) => {
-      const annualGross = getAnnualGross(job);
-      const withholding = estimateIndividualWithholding(job);
-      return sum + (annualGross > 0 ? (withholding.withheld / annualGross) * job.monthlyGross : 0);
-    }, 0));
+    const gross = round2(activeJobs.reduce((sum, job) => sum + getMonthlyGrossInMonth(job, MONTHS.indexOf(point.month)), 0));
+    const ss = round2(activeJobs.reduce((sum, job) => sum + calculateSS(getMonthlyGrossInMonth(job, MONTHS.indexOf(point.month)), job.contractType), 0));
+    const monthWithholding = round2(
+      activeJobs.reduce((sum, job) => {
+        const jobResult = jobTaxData.find((item) => item.job.id === job.id);
+        if (!jobResult) return sum;
+        return sum + jobResult.irpfWithheldAnnual / Math.max(jobResult.activeMonths, 1);
+      }, 0),
+    );
 
     return {
       ...point,
       gross,
-      tax,
-      net: round2(gross - ss - tax),
+      tax: monthWithholding,
+      net: round2(gross - ss - monthWithholding),
     };
   });
+
+  const jobsResult = jobTaxData.map((item) => ({
+    id: item.job.id,
+    company: item.job.company,
+    contractType: item.job.contractType,
+    withholdingMode: item.job.withholdingMode,
+    monthlyGross: item.job.monthlyGross,
+    annualGross: item.annualGross,
+    ss: item.ss.total,
+    ssBreakdown: item.ss,
+    taxableBase: Math.max(item.annualGross - item.ss.total, 0),
+    irpfWithheldAnnual: item.irpfWithheldAnnual,
+    withholdingRate: item.withholdingRate,
+    netPaidAnnual: item.netPaidAnnual,
+    netMonthlyAverage: round2(item.netPaidAnnual / Math.max(item.activeMonths, 1)),
+    activeMonths: item.activeMonths,
+    payPeriods: item.payPeriods,
+  }));
 
   return {
     jobs: jobsResult,
@@ -231,20 +279,18 @@ export function simulateMultiJobScenario(jobs: JobInput[], _mode: TaxMode = 'rea
     grossAnnual,
     ssAnnual,
     ssBreakdownAnnual,
-    taxableBaseAnnual: round2(baseIrpfGlobal),
-    workIncomeReductionAnnual: round2(workIncomeReductionAnnual),
-    personalMinimumAnnual: round2(personalMinimumAnnual),
-    liquidBaseAnnual: round2(liquidBaseAnnual),
-    irpfTheoreticalAnnual: round2(irpfRealAnnual),
+    personalMinimumAnnual: globalTax.personalMinimumAnnual,
+    baseIrpfGlobalAnnual: globalTax.baseIrpfGlobalAnnual,
+    workIncomeReductionAnnual: globalTax.workIncomeReductionAnnual,
+    liquidBaseAnnual: globalTax.liquidBaseAnnual,
+    irpfRealAnnual: globalTax.irpfRealAnnual,
     irpfWithheldAnnual,
-    irpfAnnual: round2(irpfRealAnnual),
-    netAnnual,
+    netPaidAnnual,
     netAfterSettlementAnnual,
-    effectiveIrpfRate,
-    surpriseTax,
+    regularizationEstimated,
     overlapMonths: monthlyTimeline.filter((m) => m.activeJobs > 1).length,
-    secondPayerAnnual: round2(jobBreakdown.slice(1).reduce((sum, item) => sum + item.annualGross, 0)),
-    averageWithholdingRate,
+    secondPayerAnnual: round2(jobTaxData.slice(1).reduce((sum, item) => sum + item.annualGross, 0)),
+    companiesActiveByMonth,
   };
 }
 
@@ -255,7 +301,8 @@ export function defaultJob(id: string, index = 0): JobInput {
     contractType: index === 1 ? 'temporal' : 'indefinido',
     monthlyGross: index === 0 ? 2200 : 800,
     payPeriods: 12,
-    irpfRate: index === 0 ? 14 : 10,
+    irpfRate: index === 0 ? 12 : 8,
+    withholdingMode: 'auto',
     startMonth: 1,
     endMonth: 12,
     customPayPeriods: 12,
@@ -264,6 +311,10 @@ export function defaultJob(id: string, index = 0): JobInput {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * clamp(t, 0, 1);
 }
 
 function round2(value: number): number {

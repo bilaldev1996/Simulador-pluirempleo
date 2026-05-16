@@ -42,7 +42,7 @@ export default function App() {
   };
 
   const saveScenario = () => {
-    setSaved((current) => [`${new Date().toLocaleString('es-ES')} · ${jobs.length} trabajos · ${result.netAnnual.toFixed(0)}€ netos`, ...current].slice(0, 8));
+    setSaved((current) => [`${new Date().toLocaleString('es-ES')} · ${jobs.length} trabajos · ${result.netAfterSettlementAnnual.toFixed(0)}€ neto real`, ...current].slice(0, 8));
   };
 
   const updateJob = (index: number, job: JobInput) => setJobs((current) => current.map((item, i) => (i === index ? job : item)));

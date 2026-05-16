@@ -12,18 +12,17 @@ export default function JobCard({ job }: Props) {
           <p className="eyebrow">{job.contractType}</p>
           <h3>{job.company}</h3>
         </div>
-        <span className="pill">{job.withholdingRate.toFixed(1)}% retención</span>
+        <span className="pill">{job.withholdingMode === 'auto' ? 'Auto AEAT' : 'Manual'} · {job.withholdingRate.toFixed(1)}%</span>
       </div>
 
       <div className="job-metrics">
         <div><span>Bruto anual</span><strong>{money(job.annualGross)}</strong></div>
-        <div><span>SS</span><strong>{money(job.ss)}</strong></div>
-        <div><span>Base liquidable</span><strong>{money(job.liquidBase)}</strong></div>
-        <div><span>IRPF teórico</span><strong>{money(job.irpfTheoreticalAnnual)}</strong></div>
+        <div><span>SS estimada</span><strong>{money(job.ss)}</strong></div>
         <div><span>IRPF retenido</span><strong>{money(job.irpfWithheldAnnual)}</strong></div>
-        <div><span>Neto anual</span><strong>{money(job.netAnnual)}</strong></div>
+        <div><span>Neto cobrado en nómina</span><strong>{money(job.netPaidAnnual)}</strong></div>
         <div><span>Neto medio</span><strong>{money(job.netMonthlyAverage)}</strong></div>
         <div><span>Meses activos</span><strong>{job.activeMonths}</strong></div>
+        <div><span>Pagas</span><strong>{job.payPeriods}</strong></div>
       </div>
     </article>
   );
